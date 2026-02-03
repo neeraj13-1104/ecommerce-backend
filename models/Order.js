@@ -6,8 +6,11 @@ const orderItemSchema = new mongoose.Schema({
     ref: "Product",
     required: true,
   },
-  quantity: { type: Number, default: 1 },
-  price: { type: Number, required: true }, // Final price after offer
+  title: String,
+  category: String,
+  price: Number,
+  quantity: Number,
+  totalPrice: Number,
 });
 
 const orderSchema = new mongoose.Schema(
@@ -20,26 +23,34 @@ const orderSchema = new mongoose.Schema(
 
     items: [orderItemSchema],
 
-    originalAmount: Number,
-    discountAmount: Number,
-    totalAmount: { type: Number, required: true },
-
-    status: {
-      type: String,
-      enum: ["Pending", "Confirmed", "Delivered", "Cancelled"],
-      default: "Pending",
+    cartTotal: {
+      type: Number,
+      required: true,
     },
 
-    appliedOffers: [
-      {
-        title: String,
-        discountType: String,
-        discountValue: Number,
-        category: String,
-      },
-    ],
+    discountAmount: {
+      type: Number,
+      default: 0,
+    },
+
+    appliedOffer: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Offer",
+      default: null,
+    },
+
+    finalAmount: {
+      type: Number,
+      required: true,
+    },
+
+    orderStatus: {
+      type: String,
+      enum: ["PLACED", "COMPLETED", "CANCELLED"],
+      default: "PLACED",
+    },
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
 export default mongoose.model("Order", orderSchema);

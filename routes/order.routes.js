@@ -2,24 +2,35 @@ import express from "express";
 import authMiddleware from "../middleware/auth.middleware.js";
 import { allowRoles } from "../middleware/role.middleware.js";
 import {
-  createOrder,
+  placeOrder,
   getUserOrders,
-  getAllOrdersForAdmin,
+  getAllOrdersAdmin,
   updateOrderStatus,
+  cancelOrder,
 } from "../controllers/order.controller.js";
 
 const router = express.Router();
 
-// USER: Create Order
-router.post("/", authMiddleware, createOrder);
-
-// USER: Get own orders
+router.post("/place", authMiddleware, placeOrder);
 router.get("/my-orders", authMiddleware, getUserOrders);
 
-// SUPERADMIN: Get all orders
-router.get("/admin/all", authMiddleware, allowRoles("superadmin"), getAllOrdersForAdmin);
-
-// SUPERADMIN: Update order status
-router.put("/admin/:orderId/status", authMiddleware, allowRoles("superadmin"), updateOrderStatus);
+router.put(
+  "/cancel/:orderId",
+  authMiddleware,
+  allowRoles("superadmin"),
+  cancelOrder,
+);
+router.get(
+  "/admin/all",
+  authMiddleware,
+  allowRoles("superadmin"),
+  getAllOrdersAdmin,
+);
+router.put(
+  "/admin/status/:orderId",
+  authMiddleware,
+  allowRoles("superadmin"),
+  updateOrderStatus,
+);
 
 export default router;

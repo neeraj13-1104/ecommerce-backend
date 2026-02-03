@@ -200,7 +200,4 @@ export const getProductDetail = async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to fetch product" });
   }
 };
-
-
-
-
+// GET /api/products/low-stock

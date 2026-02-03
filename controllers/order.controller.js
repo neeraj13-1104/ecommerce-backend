@@ -1,159 +1,133 @@
 import Order from "../models/Order.js";
+import Cart from "../models/Cart.js";
 import Product from "../models/Product.js";
 import Offer from "../models/Offer.js";
 
-/* ================= HELPER ================= */
-const calculateFinalPrice = async (product, categoryTotals) => {
-  let originalPrice = product.price;
-  let finalPrice = product.price;
-  let discount = 0;
-  let appliedOffer = null;
+// PLACE ORDER (FROM CART)
+// controllers/order.controller.js
 
-  const offers = await Offer.find({
-    isActive: true,
-    startDate: { $lte: new Date() },
-    endDate: { $gte: new Date() },
-  });
+// controllers/order.controller.js
 
-  for (let offer of offers) {
-    if (
-      offer.type === "CATEGORY" &&
-      offer.categories.includes(product.category)
-    ) {
-      const categoryTotal = categoryTotals[product.category] || 0;
-
-      // ✅ MIN CART VALUE CHECK
-      if (categoryTotal < offer.minCartValue) {
-        continue; // ❌ offer apply nahi hoga
-      }
-
-      appliedOffer = offer;
-
-      if (offer.discountType === "PERCENT") {
-        discount = (originalPrice * offer.discountValue) / 100;
-      } else if (offer.discountType === "FLAT") {
-        discount = offer.discountValue;
-      }
-
-      finalPrice = Math.max(originalPrice - discount, 0);
-      break; // ek hi offer apply
-    }
-  }
-
-  return {
-    originalPrice,
-    finalPrice,
-    discount,
-    offerApplied: appliedOffer,
-  };
-};
-
-/* ================= USER : CREATE ORDER ================= */
-export const createOrder = async (req, res) => {
+export const placeOrder = async (req, res) => {
   try {
-    const { items } = req.body;
+    const userId = req.user.id;
 
-    if (!items || items.length === 0) {
-      return res.status(400).json({ message: "No items in order" });
+    const cart = await Cart.findOne({ user: userId }).populate("items.product");
+    if (!cart || cart.items.length === 0) {
+      return res.status(400).json({ message: "Cart is empty" });
     }
 
-    let originalAmount = 0;
-    let discountAmount = 0;
-    let totalAmount = 0;
-
+    let cartTotal = 0;
+    let totalDiscount = 0;
     const orderItems = [];
-    const appliedOffers = [];
 
-    /* ================= CATEGORY TOTALS ================= */
-    const categoryTotals = {};
-
-    for (let item of items) {
-      const product = await Product.findById(item.productId);
-      if (!product) continue;
-
-      if (!categoryTotals[product.category]) {
-        categoryTotals[product.category] = 0;
+    // ✅ STEP 1: validation
+    for (const item of cart.items) {
+      if (!item.product) {
+        return res.status(400).json({ message: "Invalid product in cart" });
       }
 
-      categoryTotals[product.category] += product.price * item.quantity;
+      if (item.product.stock < item.quantity) {
+        return res
+          .status(400)
+          .json({ message: `${item.product.title} out of stock` });
+      }
     }
 
-    /* ================= PRICE CALCULATION ================= */
-    for (let item of items) {
-      const product = await Product.findById(item.productId);
-      if (!product) continue;
+    // ✅ STEP 2: calculations
+    for (const item of cart.items) {
+      const price = item.product.price * item.quantity;
+      const discount = item.discountAmount || 0;
+      const finalPrice = price - discount;
 
-      const priceData = await calculateFinalPrice(product, categoryTotals);
-
-      originalAmount += priceData.originalPrice * item.quantity;
-      discountAmount += priceData.discount * item.quantity;
-      totalAmount += priceData.finalPrice * item.quantity;
+      cartTotal += price;
+      totalDiscount += discount;
 
       orderItems.push({
-        product: product._id,
+        product: item.product._id,
         quantity: item.quantity,
-        price: priceData.finalPrice,
+        price,
+        discountAmount: discount,
+        finalPrice,
       });
-
-      if (priceData.offerApplied) {
-        appliedOffers.push({
-          title: priceData.offerApplied.title,
-          discountType: priceData.offerApplied.discountType,
-          discountValue: priceData.offerApplied.discountValue,
-          category: priceData.offerApplied.categories,
-        });
-      }
     }
 
-    /* ================= CREATE ORDER ================= */
+    const finalAmount = cartTotal - totalDiscount;
+
+    // ✅ STEP 3: create order (MATCHING SCHEMA)
     const order = await Order.create({
-      user: req.user.id,
+      user: userId,
       items: orderItems,
-      originalAmount,
-      discountAmount,
-      totalAmount,
-      appliedOffers,
-      status: "Pending",
+      cartTotal,
+      totalDiscount,
+      finalAmount,
+      status: "PLACED",
     });
+
+    // ✅ STEP 4: reduce stock
+    for (const item of cart.items) {
+      item.product.stock -= item.quantity;
+      await item.product.save();
+    }
+
+    // ✅ STEP 5: clear cart
+    cart.items = [];
+    await cart.save();
 
     res.status(201).json({
       message: "Order placed successfully",
       order,
     });
   } catch (error) {
-    console.error("Create Order Error:", error);
-    res.status(500).json({ message: "Server error" });
+    console.error("Order error:", error);
+    res.status(500).json({ message: "Order failed" });
   }
 };
 
-/* ================= USER : GET OWN ORDERS ================= */
+// GET USER ORDERS
 export const getUserOrders = async (req, res) => {
   try {
-    const orders = await Order.find({ user: req.user.id })
-      .populate("items.product", "title price category")
+    const userId = req.user.id;
+    // console.log("User ID:", userId);
+
+    const orders = await Order.find({ user: userId })
+      .populate("items.product", "title price thumbnail")
       .sort({ createdAt: -1 });
 
-    res.json({ orders });
+    res.status(200).json({
+      success: true,
+      count: orders.length,
+      orders,
+    });
   } catch (error) {
-    res.status(500).json({ message: "Server error" });
+    console.error("Get user orders error:", error);
+    res.status(500).json({ message: "Failed to fetch user orders" });
   }
 };
 
-/* ================= ADMIN : GET ALL ORDERS ================= */
-export const getAllOrdersForAdmin = async (req, res) => {
+
+
+// ADMIN: GET ALL ORDERS
+export const getAllOrdersAdmin = async (req, res) => {
   try {
     const orders = await Order.find()
       .populate("user", "name email")
-      .populate("items.product", "title price")
       .sort({ createdAt: -1 });
 
-    res.json({ orders });
+    res.status(200).json({
+      success: true,
+      count: orders.length,
+      orders,
+    });
   } catch (error) {
-    res.status(500).json({ message: "Server error" });
+    console.error("Admin get orders error:", error);
+    res.status(500).json({ message: "Failed to fetch orders" });
   }
 };
 
-/* ================= ADMIN : UPDATE STATUS ================= */
+
+
+// ADMIN: UPDATE ORDER STATUS
 export const updateOrderStatus = async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -167,11 +141,46 @@ export const updateOrderStatus = async (req, res) => {
     order.status = status;
     await order.save();
 
-    res.json({
-      message: "Order status updated successfully",
+    res.status(200).json({
+      success: true,
+      message: "Order status updated",
       order,
     });
   } catch (error) {
-    res.status(500).json({ message: "Server error" });
+    console.error("Update order status error:", error);
+    res.status(500).json({ message: "Failed to update order status" });
+  }
+};
+
+
+// USER: CANCEL ORDER
+export const cancelOrder = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { orderId } = req.params;
+
+    const order = await Order.findOne({ _id: orderId, user: userId });
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    if (order.status === "DELIVERED") {
+      return res
+        .status(400)
+        .json({ message: "Delivered order cannot be cancelled" });
+    }
+
+    order.status = "CANCELLED";
+    await order.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Order cancelled successfully",
+      order,
+    });
+  } catch (error) {
+    console.error("Cancel order error:", error);
+    res.status(500).json({ message: "Failed to cancel order" });
   }
 };

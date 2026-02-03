@@ -1,5 +1,6 @@
 import Cart from "../models/Cart.js";
 import Product from "../models/Product.js";
+import Offer from "../models/Offer.js";
 
 // Add product to cart
 export const addToCart = async (req, res) => {
@@ -91,7 +92,7 @@ export const updateQuantity = async (req, res) => {
   try {
     const userId = req.user.id;
     const { productId, quantity } = req.body;
-
+    console.log(req.user);
     let cart = await Cart.findOne({ user: userId });
     if (!cart) return res.status(404).json({ message: "Cart not found" });
 
@@ -110,4 +111,50 @@ export const updateQuantity = async (req, res) => {
     console.error(error);
     res.status(500).json({ message: "Server Error" });
   }
+};
+
+
+
+
+// Apply category offer on cart
+// controllers/cart.controller.js
+
+
+export const applyOfferToProduct = async (req, res) => {
+  const { offerId, productId } = req.body;
+
+  const userId = req.user.id;
+ console.log(req.user)
+  const cart = await Cart.findOne({ user: userId }).populate("items.product");
+  if (!cart) return res.status(404).json({ message: "Cart not found" });
+
+  const item = cart.items.find(
+    (i) => i.product._id.toString() === productId
+  );
+  if (!item) return res.status(404).json({ message: "Product not in cart" });
+
+  const offer = await Offer.findById(offerId);
+  if (!offer) return res.status(404).json({ message: "Offer not found" });
+
+  // ✅ CATEGORY CHECK
+  if (!offer.categories.includes(item.product.category)) {
+    return res.status(400).json({ message: "Offer not applicable" });
+  }
+
+  // ✅ DISCOUNT CALCULATION
+  let discount = 0;
+  const price = item.product.price * item.quantity;
+
+  if (offer.discountType === "PERCENT") {
+    discount = (price * offer.discountValue) / 100;
+  } else {
+    discount = offer.discountValue;
+  }
+
+  item.appliedOffer = offer._id;
+  item.discountAmount = discount;
+
+  await cart.save();
+
+  res.json({ message: "Offer applied successfully", cart });
 };

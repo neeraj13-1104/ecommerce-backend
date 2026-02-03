@@ -3,7 +3,8 @@ import {
   createCategoryOffer,
   getActiveCategoryOffers,
   getCategoryOfferCount,
-  deleteCategoryOffer
+  deleteCategoryOffer,
+  getProductsByCategoryOffer
 } from "../controllers/offer.controller.js";
 import authMiddleware from "../middleware/auth.middleware.js";
 import { allowRoles } from "../middleware/role.middleware.js";
@@ -22,11 +23,17 @@ router.post(
 );
 
 /* ===== FRONTEND ===== */
-router.get("/category/active", getActiveCategoryOffers);
+router.get("/active", getActiveCategoryOffers);
 router.get("/category/count", getCategoryOfferCount);
 
 router.delete("/category/:id", deleteCategoryOffer);
 
+
+
+router.get(
+  "/category-offer/:offerId/products",
+  getProductsByCategoryOffer
+);
 
 
 export default router;

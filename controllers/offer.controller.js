@@ -1,4 +1,5 @@
 import Offer from "../models/Offer.js";
+import Product from "../models/Product.js"; // 🔥 ADD THIS LINE
 
 /* ======================================================
    CREATE CATEGORY OFFER (SUPER ADMIN ONLY)
@@ -14,7 +15,7 @@ export const createCategoryOffer = async (req, res) => {
       startDate,
       endDate,
     } = req.body;
-
+   console.log(req.body);
     /* ===== REQUIRED FIELDS CHECK ===== */
     if (
       !title ||
@@ -92,7 +93,7 @@ export const createCategoryOffer = async (req, res) => {
       endDate,
       isActive: true,
     });
-
+   console.log(offer);
     res.status(201).json({
       success: true,
       message: "Category offer created successfully",
@@ -199,6 +200,57 @@ export const deleteCategoryOffer = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to delete category offer",
+    });
+  }
+};
+
+
+export const getProductsByCategoryOffer = async (req, res) => {
+  try {
+    // 🔹 Disable cache (304 fix)
+    res.set({
+      "Cache-Control": "no-store",
+      "Pragma": "no-cache",
+      "Expires": "0",
+    });
+
+    const { offerId } = req.params;
+    // console.log(offerId);
+
+    /* ===== 1. FETCH OFFER ===== */
+    const offer = await Offer.findOne({
+      _id: offerId,
+      type: "CATEGORY",
+      isActive: true,
+    });
+    // console.log(offer);
+
+    if (!offer) {
+      return res.status(404).json({
+        success: false,
+        message: "Offer not found or inactive",
+      });
+    }
+
+    /* ===== 2. FETCH PRODUCTS USING CATEGORY SLUG ===== */
+    const products = await Product.find({
+      category: { $in: offer.categories }, // ✅ STRING ↔ STRING
+      // isActive: true,
+    });
+  console.log(products);
+    /* ===== 3. RESPONSE ===== */
+    res.status(200).json({
+      success: true,
+      offerTitle: offer.title,
+      categories: offer.categories,
+      totalProducts: products.length,
+      products,
+    });
+  } catch (error) {
+    console.error("Get products by category offer error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch offer products",
     });
   }
 };

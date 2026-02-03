@@ -21,6 +21,7 @@ router.delete("/:id", deleteProductById); // 👈 DELETE
 
 // GET /api/products/detail/:id
 router.get("/detail/:id", getProductDetail);
+// 🔥 LOW STOCK PRODUCTS
 
 
 export default router;

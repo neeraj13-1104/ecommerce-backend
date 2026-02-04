@@ -24,10 +24,14 @@ const PORT = process.env.PORT || 5000; // ✅ 5000 use karo
 // 🔥 CORS (MUST BE FIRST)
 app.use(
   cors({
-    origin: ["https://ecommerce-frontend-psi-mocha.vercel.app", "https://ecommerce-frontend-mzry.vercel.app"],
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    origin: [
+      "http://localhost:5173",
+      "https://ecommerce-frontend-psi-mocha.vercel.app", // admin panel
+      "https://ecommerce-frontend-mzry.vercel.app",     // user frontend
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     credentials: true,
-  }),
+  })
 );
 
 // middleware

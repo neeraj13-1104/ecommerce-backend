@@ -30,6 +30,7 @@ app.use(
       "https://ecommerce-frontend-mzry.vercel.app",     // user frontend
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
   })
 );
@@ -37,6 +38,9 @@ app.use(
 // middleware
 app.use(express.json());
 
+
+// ✅ OPTIONS preflight
+app.options("*", cors());
 // db connect
 connectDB();
 

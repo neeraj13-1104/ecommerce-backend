@@ -20,6 +20,11 @@ const userSchema = new mongoose.Schema(
       enum: ["user", "superadmin", "productadmin"],
       default: "user",
     },
+    isGoogleUser: {
+  type: Boolean,
+  default: false,
+},
+
     resetPasswordToken: String, // 👈 ADD
     resetPasswordExpire: Date, // 👈 ADD
   },

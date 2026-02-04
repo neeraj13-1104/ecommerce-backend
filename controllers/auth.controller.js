@@ -44,6 +44,13 @@ export const login = async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ message: "Invalid credentials" });
 
+    // 🔥 YAHIN ADD KARNA HAI
+    if (user.isGoogleUser) {
+      return res.status(400).json({
+        message: "Please login using Google",
+      });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch)
       return res.status(400).json({ message: "Invalid credentials" });
@@ -133,6 +140,60 @@ export const resetPassword = async (req, res) => {
     await user.save();
 
     res.json({ message: "Password reset successful" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+
+
+export const googleLogin = async (req, res) => {
+  try {
+    const { name, email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: "Email required" });
+    }
+
+    let user = await User.findOne({ email });
+
+    // ❌ Agar user normal signup se bana hai
+    if (user && !user.isGoogleUser) {
+      return res.status(400).json({
+        message: "Please login using email & password",
+      });
+    }
+
+    // ✅ Agar user exist nahi karta → create karo
+    if (!user) {
+      user = await User.create({
+        name,
+        email,
+        isGoogleUser: true,
+      });
+    }
+
+    // 🔐 JWT token
+    const token = jwt.sign(
+      {
+        id: user._id,
+        role: user.role,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.status(200).json({
+      message: "Google login successful",
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

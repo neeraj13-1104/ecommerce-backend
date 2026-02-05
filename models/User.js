@@ -13,19 +13,14 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: function () {
-        return !this.isGoogleUser;
-      }},
+      required: true,
+    },
     role: {
       type: String,
       enum: ["user", "superadmin", "productadmin"],
       default: "user",
     },
-    isGoogleUser: {
-  type: Boolean,
-  default: false,
-},
-
+    
     resetPasswordToken: String, // 👈 ADD
     resetPasswordExpire: Date, // 👈 ADD
   },

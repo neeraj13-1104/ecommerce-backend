@@ -151,7 +151,6 @@ export const resetPassword = async (req, res) => {
 export const googleLogin = async (req, res) => {
   try {
     const { name, email } = req.body;
-
     if (!email) {
       return res.status(400).json({ message: "Email required" });
     }
@@ -159,7 +158,7 @@ export const googleLogin = async (req, res) => {
     let user = await User.findOne({ email });
 
     // ❌ Agar user normal signup se bana hai
-    if (user && !user.isGoogleUser) {
+    if (!user ) {
       return res.status(400).json({
         message: "Please login using email & password",
       });
@@ -170,7 +169,6 @@ export const googleLogin = async (req, res) => {
       user = await User.create({
         name,
         email,
-        isGoogleUser: true,
       });
     }
 

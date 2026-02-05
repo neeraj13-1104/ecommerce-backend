@@ -152,8 +152,7 @@ export const resetPassword = async (req, res) => {
 export const googleLogin = async (req, res) => {
   try {
     const { idToken } = req.body;
-    console.log("this is request body:", req.body);
-    console.log("TOKEN RECEIVED:", idToken);
+    
 
     if (!idToken) {
       return res.status(400).json({ message: "Google token required" });

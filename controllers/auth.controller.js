@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import sendEmail from "../config/sendEmail.js";
+import admin from "../firebaseAdmin.js"; // 🔥 ADD THIS ON TOP
 
 export const signup = async (req, res) => {
   try {
@@ -150,29 +151,39 @@ export const resetPassword = async (req, res) => {
 
 export const googleLogin = async (req, res) => {
   try {
-    const { name, email } = req.body;
-    if (!email) {
-      return res.status(400).json({ message: "Email required" });
+    const { idToken } = req.body;
+    
+
+    if (!idToken) {
+      return res.status(400).json({ message: "Google token required" });
     }
 
+    // 🔥 1️⃣ Google se token verify
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+
+    const { email, name, picture } = decodedToken;
+
+    // 🔥 2️⃣ User check
     let user = await User.findOne({ email });
 
-    // ❌ Agar user normal signup se bana hai
-    if (!user ) {
+    // 🔥 3️⃣ Agar normal signup user hai → block
+    if (user && !user.isGoogleUser) {
       return res.status(400).json({
         message: "Please login using email & password",
       });
     }
 
-    // ✅ Agar user exist nahi karta → create karo
+    // 🔥 4️⃣ Agar user exist nahi karta → create
     if (!user) {
       user = await User.create({
         name,
         email,
+        avatar: picture,
+        isGoogleUser: true,
       });
     }
 
-    // 🔐 JWT token
+    // 🔥 5️⃣ JWT generate
     const token = jwt.sign(
       {
         id: user._id,
@@ -193,6 +204,7 @@ export const googleLogin = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(401).json({ message: "Invalid Google token" });
   }
 };

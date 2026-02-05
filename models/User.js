@@ -12,15 +12,21 @@ const userSchema = new mongoose.Schema(
       unique: true,
     },
     password: {
-      type: String,
-      required: true,
+  type: String,
+  required: function () {
+    return !this.isGoogleUser;
+  }
     },
     role: {
       type: String,
       enum: ["user", "superadmin", "productadmin"],
       default: "user",
     },
-    
+    isGoogleUser: {
+  type: Boolean,
+  default: false,
+},
+
     resetPasswordToken: String, // 👈 ADD
     resetPasswordExpire: Date, // 👈 ADD
   },

@@ -10,7 +10,7 @@ const __dirname = path.dirname(__filename);
 // read service account JSON
 const serviceAccount = JSON.parse(
   fs.readFileSync(
-    path.join(__dirname, "serviceAccountKey.json"),
+    path.join(__dirname, "serviceAccountKey.json.json"),
     "utf8"
   )
 );

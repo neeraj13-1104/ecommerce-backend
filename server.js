@@ -25,7 +25,7 @@ const PORT = process.env.PORT || 5000; // ✅ 5000 use karo
 app.use(
   cors({
     origin: [
-      "http://localhost:5173",
+      "http://localhost:5173","http://localhost:5174",
       "https://ecommerce-frontend-psi-mocha.vercel.app",
       "https://ecommerce-frontend-mzry.vercel.app",
     ],
